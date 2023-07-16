@@ -13,8 +13,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommend
     jq \
     lsb-release \
     software-properties-common \
-    libicu66
+    libicu66 \
+    python \
+    python3-pip
 
+RUN  pip3 install ansible
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 COPY --from=kubectl /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/
 
