@@ -1,46 +1,86 @@
 # syntax=docker/dockerfile:1
 
-FROM ubuntu:latest 
+FROM ubuntu:latest
 
-#Set Username : 
+# Set Username
 ARG USERNAME=dana
 
-#exceute next command as root : 
+# Execute commands as root
 USER root
 
-RUN apt update
-RUN apt upgrade -y
-RUN apt install -y apt-file apt-transport-https
-RUN apt-file update
-RUN apt install -y curl net-tools dnsutils iputils-ping ssh telnet wget sudo gpg git apt-transport-https zsh vim
-#Hasichorp : 
-RUN apt install -y gnupg software-properties-common
+# Update and install dependencies
+RUN apt update && apt upgrade -y && \
+    apt install -y \
+        apt-file \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        dnsutils \
+        gpg \
+        git \
+        gnupg \
+        iputils-ping \
+        net-tools \
+        software-properties-common \
+        ssh \
+        sudo \
+        tar \
+        telnet \
+        vim \
+        wget \
+        zsh \
+        gzip && \
+    apt-file update && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-## Azure Cli 
-RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+# Create non-root user and add to sudoers
+RUN useradd -m -s /bin/bash $USERNAME && \
+    usermod -aG sudo $USERNAME && \
+    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-## Install Terraform 
-RUN wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor |sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
-RUN echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-RUN apt update && sudo apt install -y terraform
+# Install Azure CLI
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 
-## INstall Kubectl 
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
-RUN chmod +x ./kubectl
-RUN mv ./kubectl /usr/bin
+# Install Terraform
+RUN wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor > /usr/share/keyrings/hashicorp-archive-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" > /etc/apt/sources.list.d/hashicorp.list && \
+    apt update && apt install -y terraform && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-## Clean Up 
-RUN apt-get clean
-RUN rm -rf /var/lib/apt/lists/*
+# Install Kubectl
+RUN curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl" && \
+    chmod +x ./kubectl && \
+    mv ./kubectl /usr/local/bin/kubectl
 
-RUN useradd -m $USERNAME
+# Install oc CLI
+RUN curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz && \
+    tar -xvf oc.tar.gz && \
+    mv oc /usr/local/bin/oc && \
+    chmod +x /usr/local/bin/oc && \
+    rm -f oc.tar.gz README.md
 
-RUN echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
-
-# Set up zsh
-COPY sources/.zshrc /home/$USERNAME/.zshrc 
-
-# Switch to user name to set up user context.
+# Switch to new user
 USER $USERNAME
+
+# Add aliases
+RUN echo "alias ll='ls -all'" >> /home/$USERNAME/.bashrc && \
+    echo "alias la='ls -A'" >> /home/$USERNAME/.bashrc && \
+    echo "alias l='ls -CF'" >> /home/$USERNAME/.bashrc && \
+    echo "alias tfi='terraform init'" >> /home/$USERNAME/.bashrc && \
+    echo "alias tfa='terraform apply'" >> /home/$USERNAME/.bashrc && \
+    echo "alias tfp='terraform plan'" >> /home/$USERNAME/.bashrc && \
+    echo "alias tfm='terraform fmt'" >> /home/$USERNAME/.bashrc && \
+    echo "alias tfv='terraform validate'" >> /home/$USERNAME/.bashrc && \
+    echo "alias tfd='terraform destroy'" >> /home/$USERNAME/.bashrc && \
+    echo "alias k='kubectl'" >> /home/$USERNAME/.bashrc && \
+    echo "alias gits='git status'" >> /home/$USERNAME/.bashrc && \
+    echo "alias gitp='git pull'" >> /home/$USERNAME/.bashrc && \
+    echo "alias gitb='f() { git branch \$1 && git checkout \$1; }; f'" >> /home/$USERNAME/.bashrc && \
+    echo "alias gitc='f() { git add . && git commit -m \"\$1\" && git push; }; f'" >> /home/$USERNAME/.bashrc
+
+# Set working directory
 WORKDIR /home/$USERNAME/
+
+CMD ["/bin/bash"]
