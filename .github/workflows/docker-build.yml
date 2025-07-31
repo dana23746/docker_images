@@ -40,8 +40,8 @@ jobs:
       - name: Build and push multi-arch Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./ubuntu-net-tools # Change to the folder where Dockerfile is located
-          file: ./ubuntu-net-tools/Dockerfile
+          context: ./debugContainer # Change to the folder where Dockerfile is located
+          file: ./debugContainer/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
